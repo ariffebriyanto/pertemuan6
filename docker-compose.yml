@@ -1,0 +1,41 @@
+name: core-banking-app
+
+# =========================================================================
+# Docker Compose Setup: Core Banking API & SQL Server Container (Pertemuan 9)
+# =========================================================================
+
+services:
+  # Service 1: Application Web API (Core Banking)
+  bank-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bank_core_api
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=mssql-db,1433;Database=BankCoreDb;User Id=sa;Password=PasswordBanking@123;TrustServerCertificate=True;MultipleActiveResultSets=true
+      - Jwt__Secret=SuperSecretBankingKey2026!MustBeLongEnoughForHS256Algorithm
+      - Jwt__Issuer=BankCoreApi
+      - Jwt__Audience=BankCoreClients
+    depends_on:
+      mssql-db:
+        condition: service_healthy
+    restart: always
+
+  # Service 2: Production Database Container (Microsoft SQL Server 2022)
+  mssql-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: bank_mssql_db
+    user: root # Mengizinkan pembuatan file database master.mdf di Windows Docker Desktop
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=PasswordBanking@123
+    ports:
+      - "1433:1433"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P PasswordBanking@123 -Q 'SELECT 1' -C || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P PasswordBanking@123 -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10

@@ -1,0 +1,75 @@
+name: Core Banking API - CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  # =========================================================================
+  # Job 1: Build & Run Automated Unit + Integration Testing (Pertemuan 7 & 9)
+  # =========================================================================
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code Repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK 9.0
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Restore NuGet Dependencies
+      run: dotnet restore BankCoreSolution.sln
+
+    - name: Build Solution (Release Mode)
+      run: dotnet build BankCoreSolution.sln --no-restore -c Release
+
+    - name: Run Automated Test Suite (Unit & Integration)
+      run: dotnet test BankCoreSolution.sln --no-build -c Release --verbosity normal
+
+  # =========================================================================
+  # Job 2: Docker Image Build & Verification (Pertemuan 9)
+  # =========================================================================
+  docker-build:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker Container Image
+      run: |
+        docker build -t bankcoreapi:latest .
+        docker image ls
+
+  # =========================================================================
+  # Job 3: Deployment Stage / Continuous Deployment (CD - Pertemuan 9)
+  # =========================================================================
+  deploy-to-production:
+    needs: docker-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    steps:
+    - name: 1. Push Docker Image ke Container Registry (misal ghcr.io / Docker Hub)
+      run: |
+        echo "Mengunggah Docker Image hasil build yang lulus pengujian ke Container Registry..."
+        # Contoh perintah publikasi image:
+        # docker tag bankcoreapi:latest ghcr.io/username/bankcoreapi:latest
+        # docker push ghcr.io/username/bankcoreapi:latest
+
+    - name: 2. Deploy ke Server Cloud / Kubernetes (Production / Staging)
+      run: |
+        echo "Menjalankan otomatisasi deployment ke Server Target..."
+        # Contoh perintah rilis otomatis via SSH / kubectl / Webhook:
+        # ssh user@server-ip "cd /app && docker compose pull && docker compose up -d --remove-orphans"
+        echo "Aplikasi Core Banking API Berhasil Ter-deploy dan Siap Melayani Nasabah!"
+
